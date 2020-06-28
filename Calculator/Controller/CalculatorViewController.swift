@@ -13,7 +13,8 @@ class CalculatorViewController: UIViewController {
     @IBOutlet weak var displayLabel: UILabel!
     @IBOutlet var buttonCollection: [UIButton]!
     @IBOutlet weak var clearButton: UIButton!
-    
+
+    private var calculator = CalculatorLogic()
     private var isFinishedTypingNumber: Bool = true
     private var displayValue: Double {
         get {
@@ -25,7 +26,12 @@ class CalculatorViewController: UIViewController {
         }
         
         set {
-            displayLabel.text = String(newValue)
+            if newValue == .infinity {
+                displayLabel.text = "lim\n♾"
+            } else {
+                let textToDisplay = floor(newValue) == newValue ? String(Int(newValue)) : String(newValue)
+                displayLabel.text = textToDisplay.truncated(limit: 9, position: .tail)
+            }
         }
     }
     
@@ -44,15 +50,14 @@ class CalculatorViewController: UIViewController {
     
     @IBAction func calcButtonTapped(_ sender: UIButton) {
         isFinishedTypingNumber = true
+        calculator.setNumber(displayValue)
+        
         if let operation = sender.currentTitle {
-            let calculator = CalculatorLogic(number: displayValue)
-            guard let result = calculator.calculate(symbol: operation) else {
-                fatalError("The result of the calculation is nil.")
-            }
-            displayValue = result
-            
-            if operation == "C" {
-                clearButton.setTitle("AC", for: .normal)
+            if let result = calculator.calculate(symbol: operation) {
+                displayValue = result
+                if operation == "C" {
+                    clearButton.setTitle("AC", for: .normal)
+                }
             }
         }
     }
@@ -60,14 +65,20 @@ class CalculatorViewController: UIViewController {
     @IBAction func numberButtonPressed(_ sender: UIButton) {
         if let numValue = sender.currentTitle {
             if isFinishedTypingNumber {
-                displayLabel.text = numValue
+                guard numValue != "0" else { return }
+                
+                if numValue == "." {
+                    displayLabel.text?.append(".")
+                } else {
+                    displayLabel.text = numValue
+                }
                 clearButton.setTitle("C", for: .normal)
                 isFinishedTypingNumber = !isFinishedTypingNumber
             } else {
-                if numValue == "." {
-                    if floor(displayValue) == displayValue { return }
-                }
-                displayLabel.text?.append(numValue)
+                guard let currentText = displayLabel.text,
+                    numValue != "." || !currentText.contains(".") else { return }
+
+                displayLabel.text = currentText.appending(numValue).truncated(limit: 9)
             }
         }
     }
